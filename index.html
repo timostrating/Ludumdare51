@@ -1,0 +1,148 @@
+<!doctype html>
+<html>
+    <head>
+        <style type="text/css">
+            html, body {
+                background-color: #0b0b0c;
+            }
+            body {
+                margin: 0;
+            }
+            canvas {
+                cursor: crosshair;
+                height:100vh; 
+                image-rendering: pixelated;
+                display: block;
+                margin: 0 auto;
+            }
+
+            #alert {
+                position: fixed;
+                z-index: 9;
+                top: 40%;
+                left: 0;
+                width: 100%;
+                text-align: center;
+                padding: 20px 0;
+                font-size: 3vh;
+                font-family: monospace;
+                font-weight: bold;
+                text-transform: uppercase;
+                background-color: black;
+            }
+
+            .happy {
+                color: rgb(0,255,0);
+            }
+
+            .sad {
+                color: rgb(255,0,0);
+            }
+        </style>
+
+        <script>
+            window.mouseX = 0;
+            window.mouseY = 0;
+            window.level = 1;
+            window.hasFinished = false;
+    
+            function update() {
+                const imageData = ctx.createImageData(250, 250);
+                imageData.data.set(Module.copy()); 
+                ctx.putImageData(imageData, 0, 0); 
+                console.log('update');
+            }
+
+            function tempAlert(msg,duration,className="happy")
+            {
+                var el = document.createElement("div");
+                el.setAttribute ('id', 'alert');
+                el.setAttribute ('class', className);
+                el.innerHTML = msg;
+                setTimeout(function(){
+                el.parentNode.removeChild(el);
+                },duration);
+                document.body.appendChild(el);
+            }
+
+            function xy_to_uv(x, y) {
+                let u = (x - ctx.canvas.getBoundingClientRect().left) / ctx.canvas.clientWidth;
+                let v = (y - ctx.canvas.getBoundingClientRect().top) / ctx.canvas.clientHeight;
+                
+                if (u < 0 || u > 1.0 || v < 0 || v > 1.0)
+                    return [0, 0];
+
+                u = Math.max(Math.min(u, 1.0), 0.0);
+                v = Math.max(Math.min(v, 1.0), 0.0);
+
+                return [u, v]
+            }
+
+            function finish() {
+                window.level += 1;
+                if (window.level > 3) {
+                    tempAlert("You have finished the game. <br/> <br/> Thanks you for exploring the world of RTXDucks ;)", 20000000);
+                    window.hasFinished = true;
+                    window.level = 1;
+                } else {
+                    tempAlert("Correct", 1000);
+                }
+                
+                Module.loadWorld(window.level);
+                Module.clear()
+                update();
+
+                if (window.hasFinished) { setTimeout(() => {Module.render();}, 100); }   
+            }
+    
+            var Module = {
+                onRuntimeInitialized: function() {
+                    const canvas = document.querySelector('#maincanvas');
+                    const width = canvas.width;// 5
+                    const height = canvas.height;// 300
+    
+                    window.ctx = canvas.getContext('2d');
+
+                    Module.loadWorld(window.level);
+    
+                    setInterval(() => {
+                        let [u, v] = xy_to_uv(window.mouseX, window.mouseY);
+
+                        if (u == 0 && v == 0)
+                            return;
+
+                        Module.sendRay(u, v, 10 + parseInt(Math.random() * 10));
+                        update();
+                    }, 20);
+                }
+            };
+    
+            document.addEventListener("mousemove", e => {
+                window.mouseX = e.clientX;
+                window.mouseY = e.clientY;
+            });
+
+            document.addEventListener("mousedown", e => {
+                if (window.hasFinished)
+                    return;
+
+                let [u, v] = xy_to_uv(e.clientX, e.clientY);
+
+                if(Module.raycast(u,v))
+                    finish()
+                else
+                    tempAlert("miss", 1000, "sad");
+            });
+        </script>
+        <script src="main.js"></script>
+    </head>    
+    <body>
+        <canvas width="250", height="250" id="maincanvas"></canvas>
+        <!-- <button onclick="Module.sendRay(0.5, 0.5, 0); update()">traceCenter</button>
+        <button onclick="Module.sendRay(Math.random(), Math.random(), Math.random() * 5);update()">SendRay</button>
+        <button onclick="Module.render();update()">Render</button>
+        <button onclick="Module.renderAt(Math.random(), Math.random(), Math.random()); update()">RenderAt</button>
+        <button onclick="Module.raycast(Math.random(), Math.random())">Raycast</button>
+        <button onclick="update()">copy</button> -->
+    </body>
+</html>
